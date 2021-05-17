@@ -1,7 +1,9 @@
 package calculaProb;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
@@ -18,21 +20,30 @@ public class CalculadorPartidos {
 	private int generadas = 0;
 	private long inicial = 0;
 	private List<Clasificacion> soluciones = new ArrayList<>();
+	private Comparator<EquipoEnUnaClasificacion> ordenarPor;
 
 	/**
 	 * Imprime por pantalla las probabilidades
-	 * @param c - La Clasificación Inicial de la liga
-	 * @param p - La lista de partidos a disputar
-	 * @param posiciones - Las posiciones para las que calcular la probabilidad. 
-	 * EJ: Posibilidad de quedar campeón = {1}, Posibilidad de quedar entre los dos primeros = {1,2}
-	 * @param jornadas - Numero de jornadas a disputar (sólo se usa si se desean seleccionar partidos)
-	 * @param estrategia - La estrategia de generación de posibilidades
-	 * @param seleccionarPartidos - True, si se desean eliminar partidos no necesarios. Sólo funciona si se ordena por puntos.
+	 * 
+	 * @param c                   - La Clasificación Inicial de la liga
+	 * @param p                   - La lista de partidos a disputar
+	 * @param posiciones          - Las posiciones para las que calcular la
+	 *                            probabilidad. EJ: Posibilidad de quedar campeón =
+	 *                            {1}, Posibilidad de quedar entre los dos primeros
+	 *                            = {1,2}
+	 * @param jornadas            - Numero de jornadas a disputar (sólo se usa si se
+	 *                            desean seleccionar partidos)
+	 * @param estrategia          - La estrategia de generación de posibilidades
+	 * @param seleccionarPartidos - True, si se desean eliminar partidos no
+	 *                            necesarios. Sólo funciona si se ordena por puntos.
+	 * @param ordenarPor          - Criterio de ordenación de clasificaciones
 	 */
 	public CalculadorPartidos(Clasificacion c, List<Partido> p, List<Integer> posiciones, int jornadas,
-			EstrategiaGeneracion estrategia, boolean seleccionarPartidos) {
+			EstrategiaGeneracion estrategia, boolean seleccionarPartidos,
+			Comparator<EquipoEnUnaClasificacion> ordenarPor) {
 		this.c = c;
 		this.partidos = p;
+		this.ordenarPor = ordenarPor;
 
 		if (seleccionarPartidos)
 			seleccionarPartidos(posiciones, jornadas);
@@ -42,7 +53,7 @@ public class CalculadorPartidos {
 		estrategia.run(this);
 
 		long fin = System.currentTimeMillis();
-		System.out.println("Tiempo = "+(fin - inicial) / (double) 1000);
+		System.out.println("Tiempo = " + (fin - inicial) / (double) 1000);
 
 	}
 
@@ -91,13 +102,14 @@ public class CalculadorPartidos {
 		int puntosRestantes = jornadas * 3;
 		int posSuperior = posiciones.get(0);
 		int posInferior = posiciones.get(posiciones.size() - 1);
-		List<EquipoEnUnaClasificacion> equipos = c.getEquipos(Clasificacion.ORDENAR_POR_COEFICIENTE);
+		List<EquipoEnUnaClasificacion> equipos = c.getEquipos(ordenarPor);
 		int ptsSuperior = equipos.get(posSuperior - 1).getPuntos();
 		int ptsInferior = equipos.get(posInferior - 1).getPuntos();
 
 		List<String> enJuego = new ArrayList<>();
 		for (EquipoEnUnaClasificacion equipo : equipos) {
-			if (equipo.getPuntos() <= ptsSuperior + puntosRestantes && equipo.getPuntos() >= ptsInferior - puntosRestantes) {
+			if (equipo.getPuntos() <= ptsSuperior + puntosRestantes
+					&& equipo.getPuntos() >= ptsInferior - puntosRestantes) {
 				enJuego.add(equipo.getEquipo());
 				System.out.println("Equipo: " + equipo.getEquipo());
 			}
@@ -116,38 +128,38 @@ public class CalculadorPartidos {
 		System.out.println("Equipos relevantes = " + enJuego.size() + " Partidos relevantes = " + partidos.size());
 	}
 
-	public Resultado getOpcionesDe(String equipo, int i) {
-		int correctas = 0;
-		int golaverage = 0;
-		for (Clasificacion sol : soluciones) {
-			Map<String, Integer> mapa = sol.mapaPosiciones();
-			if (mapa.get(equipo) == i && containsValueTwice(mapa, mapa.get(equipo))) {
-				golaverage++;
-			} else {
-				if (mapa.get(equipo) == i)
-					correctas++;
-			}
-		}
-		return new Resultado(equipo, (correctas / (double) soluciones.size() * 100),(golaverage / (double) soluciones.size() * 100));
+	public Resultado getOpcionesDe(String equipo, int posicion) {
+		List<Integer> posiciones = Arrays.asList(new Integer[] { posicion });
+		return getOpcionesDe(equipo, posiciones);
 	}
 
-	public Resultado getOpcionesDe(String equipo, List<Integer> i) {
-		int correctas = 0;
-		int golaverage = 0;
-		for (Clasificacion sol : soluciones) {
-			Map<String, Integer> mapa = sol.mapaPosiciones();
-			if (i.contains(mapa.get(equipo)) && containsValueTwice(mapa, mapa.get(equipo))) {
+	public Resultado getOpcionesDe(String equipo, List<Integer> posicionesObjetivo) {
+		int correctas = 0; // Clasificaciones en las que logra el objetivo
+		int golaverage = 0; // Clasificaciones en las que se mira el golaveraje para lograr el objetivo
+
+		for (Clasificacion clasificacion_final : soluciones) {
+			Map<String, Integer> mapaEquipoPosicion = clasificacion_final.mapaPosiciones();
+			int posicionEquipo = mapaEquipoPosicion.get(equipo);
+			boolean equipoLograPosicionObjetivo = posicionesObjetivo.contains(posicionEquipo);
+
+			if (equipoLograPosicionObjetivo
+					&& seDecidePorGolaveraje(mapaEquipoPosicion, posicionEquipo, posicionesObjetivo)) {
 				golaverage++;
-			} else {
-				if (i.contains(mapa.get(equipo)))
-					correctas++;
+			} else if (equipoLograPosicionObjetivo) {
+				correctas++;
 			}
 		}
-		return new Resultado(equipo, (correctas / (double) soluciones.size() * 100),(golaverage / (double) soluciones.size() * 100));
+
+		return new Resultado(equipo, calcularPorcentajeSobreClasificacionesGeneradas(correctas),
+				calcularPorcentajeSobreClasificacionesGeneradas(golaverage));
 
 	}
 
-	private boolean containsValueTwice(Map<String, Integer> mapa, Integer posicion) {
+	private double calcularPorcentajeSobreClasificacionesGeneradas(int valor) {
+		return valor / (double) soluciones.size() * 100;
+	}
+
+	private boolean seDecidePorGolaveraje(Map<String, Integer> mapa, Integer posicion, List<Integer> posiciones) {
 		int valores = 0;
 		for (String key : mapa.keySet()) {
 			int valor = mapa.get(key);
@@ -155,7 +167,9 @@ public class CalculadorPartidos {
 				valores++;
 			}
 		}
-		return valores > 1;
+
+		int ultima_valida = posiciones.get(posiciones.size() - 1);
+		return (posicion + valores - 1) > ultima_valida;
 	}
 
 	public void addGenerada() {

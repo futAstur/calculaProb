@@ -7,6 +7,7 @@ import java.io.FileOutputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -22,21 +23,24 @@ public class Main {
 		System.out.println(getPrologo());
 		System.out.println("CALCULANDO...");
 		
+		Comparator<EquipoEnUnaClasificacion> ordenarPor = Clasificacion.ORDENAR_POR_PUNTOS;
+		
 		// Carga la Clasificación Actual desde el archivo clas.txt
-		Clasificacion c = cargarClasificacion("files/clas.txt");
+		Clasificacion c = cargarClasificacion("files/clas.txt", ordenarPor, ";");
 		// Generar partidos desde el archivo grupos.txt
-		generarPartidosDesdeGrupo("files/grupos.txt", "files/partidos.txt");
+		//generarPartidosDesdeGrupo("files/grupos.txt", "files/partidos.txt");
 		// Carga los partidos del archivo partidos.txt
 		List<Partido> p = cargarPartidos("files/partidos.txt");
 
 		// Posiciones para las que calcular la probabilidad
+		int posicionInicial = 1;
+		int posicionFinal = 4;
 		List<Integer> list = new ArrayList<>();
-		list.add(1);
-		list.add(2);
-		list.add(3);
-
+		for (int i = posicionInicial; i <= posicionFinal; i++) {
+			list.add(i);
+		}
 		// Llamada al calculador de partidos
-		CalculadorPartidos b = new CalculadorPartidos(c, p, list, 2, new EstrategiaAleatorio(1000000, c), false);
+		CalculadorPartidos b = new CalculadorPartidos(c, p, list, 2, new EstrategiaAleatorio(1000000, c), false,ordenarPor);
 
 		System.out.println("Clasificaciones generadas = " + b.getSoluciones().size());
 
@@ -122,13 +126,13 @@ public class Main {
 		}
 	}
 
-	public static Clasificacion cargarClasificacion(String filename) {
-		Clasificacion c = new Clasificacion();
+	public static Clasificacion cargarClasificacion(String filename,Comparator<EquipoEnUnaClasificacion> ordenarPor, String separador) {
+		Clasificacion c = new Clasificacion(ordenarPor);
 		try {
 			BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(filename), "UTF-8"));
 			String line = null;
 			while ((line = br.readLine()) != null) {
-				String[] fields = line.split(";");
+				String[] fields = line.split(separador);
 				EquipoEnUnaClasificacion eqc = new EquipoEnUnaClasificacion(fields[0], Integer.parseInt(fields[1]),
 						Integer.parseInt(fields[2]), Integer.parseInt(fields[3]));
 				c.addEquipo(eqc);

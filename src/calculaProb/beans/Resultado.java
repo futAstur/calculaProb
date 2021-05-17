@@ -42,7 +42,8 @@ public class Resultado {
 	}
 	
 	public String toMachineFriendly(char separator) {
-		return equipo+separator+correctas+separator+golaveraje;
+		String base = String.format("%s\t%.4f\t%.4f", equipo,correctas,golaveraje);
+		return base.replaceAll("\t", String.valueOf(separator));
 	}
 
 }

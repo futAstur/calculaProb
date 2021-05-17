@@ -15,7 +15,12 @@ public class Clasificacion {
 	
 	public static final Comparator<EquipoEnUnaClasificacion> ORDENAR_POR_PUNTOS = new ComparatorByPts();
 	public static final Comparator<EquipoEnUnaClasificacion> ORDENAR_POR_COEFICIENTE = new ComparatorByCoef();
+	private Comparator<EquipoEnUnaClasificacion> ordenarPor;
 
+	public Clasificacion(Comparator<EquipoEnUnaClasificacion> ordenarPor) {
+		this.ordenarPor = ordenarPor;
+	}
+	
 	public List<EquipoEnUnaClasificacion> getEquipos(Comparator<EquipoEnUnaClasificacion> sortMethod) {
 		for (EquipoEnUnaClasificacion eq : equipos) {
 			eq.colocarPuntos();
@@ -80,7 +85,7 @@ public class Clasificacion {
 
 	public String toString() {
 		String result = "";
-		List<EquipoEnUnaClasificacion> eqps = getEquipos(ORDENAR_POR_COEFICIENTE);
+		List<EquipoEnUnaClasificacion> eqps = getEquipos(ordenarPor);
 		for (int i = 0; i < eqps.size(); i++) {
 			result += (i + 1) + " -> " + eqps.get(i).getEquipo() + " - " + eqps.get(i).getPuntos() + " pts\n";
 		}
@@ -88,7 +93,7 @@ public class Clasificacion {
 	}
 
 	public Clasificacion clone() {
-		Clasificacion c = new Clasificacion();
+		Clasificacion c = new Clasificacion(ordenarPor);
 		for (EquipoEnUnaClasificacion equipoEnUnaClasificacion : equipos) {
 			c.addEquipo(equipoEnUnaClasificacion.clone());
 		}
@@ -97,8 +102,9 @@ public class Clasificacion {
 
 	public Map<String, Integer> mapaPosiciones() {
 		Map<String, Integer> map = new HashMap<>();
-		List<EquipoEnUnaClasificacion> eqps = getEquipos(ORDENAR_POR_COEFICIENTE);
+		List<EquipoEnUnaClasificacion> eqps = getEquipos(Clasificacion.ORDENAR_POR_PUNTOS);
 		int posicion = 1;
+		int pos_temp = 1;
 		int ptsAnt=-1;
 		for (int i = 0; i < eqps.size(); i++) {
 			if (i == 0) {
@@ -106,11 +112,13 @@ public class Clasificacion {
 				ptsAnt=eqps.get(i).getPuntos();
 			} else {
 				if(eqps.get(i).getPuntos()==ptsAnt) {
+					pos_temp++;
 					map.put(eqps.get(i).getEquipo(), posicion);
 				}
 				else 
 				{
-					posicion++;
+					pos_temp++;
+					posicion=pos_temp;
 					map.put(eqps.get(i).getEquipo(), posicion);
 					ptsAnt=eqps.get(i).getPuntos();
 				}
